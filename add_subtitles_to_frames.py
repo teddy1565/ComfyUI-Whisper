@@ -72,8 +72,14 @@ class AddSubtitlesToFramesNode:
         last_frame_no = 0
         for i in range(len(alignment)):
             alignment_obj = alignment[i]
+
             start_frame_no = math.floor(alignment_obj["start"] * video_fps)
-            end_frame_no = math.floor(alignment_obj["end"] * video_fps)
+            start_frame_no = max(last_frame_no, start_frame_no)
+
+            end_frame_no = math.ceil(alignment_obj["end"] * video_fps)
+            end_frame_no = max(start_frame_no + 1, end_frame_no)
+
+            end_frame_no = min(end_frame_no, len(pil_images))
 
             # create images without text
             for i in range(last_frame_no, start_frame_no):
