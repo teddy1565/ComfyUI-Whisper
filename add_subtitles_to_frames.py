@@ -94,6 +94,7 @@ class AddSubtitlesToFramesNode:
                 cropped_pil_images_with_text.append(black_img)  
                 subtitle_coord.append((0,0,0,0))
 
+            outline_width = 3
 
             for i in range(start_frame_no,end_frame_no):
                 img = pil_images[i].convert("RGB")
@@ -101,8 +102,10 @@ class AddSubtitlesToFramesNode:
 
                 d = ImageDraw.Draw(img)
 
-                # center text
-                text_bbox = d.textbbox((x_position, y_position), alignment_obj["value"], font=font)
+                # 修改 1：在計算 Bounding Box 時加入 stroke_width
+                # 這是為了確保置中計算時，有把邊框的寬度也考量進去
+                text_bbox = d.textbbox((x_position, y_position), alignment_obj["value"], font=font, stroke_width=outline_width)
+                
                 if center_x:
                     text_width = text_bbox[2] - text_bbox[0]
                     x_position = (width - text_width)/2
@@ -110,19 +113,19 @@ class AddSubtitlesToFramesNode:
                     text_height = text_bbox[3] - text_bbox[1]
                     y_position = (height - text_height)/2
 
-
-                # add text to video frames
-                d.text((x_position, y_position), alignment_obj["value"], fill=font_color,font=font)
+                # 修改 2：在實際繪製文字到影片影格時，加入 stroke_width 與 stroke_fill
+                d.text((x_position, y_position), alignment_obj["value"], fill=font_color, font=font, stroke_width=outline_width, stroke_fill="black")
                 pil_images_with_text.append(img)
 
-                # create mask
+                # 修改 3：建立 Mask 時也要加上描邊，否則 Mask 會比實際文字小一圈
                 black_img = Image.new('RGB', (width, height), 'black')
-                d = ImageDraw.Draw(black_img)
-                d.text((x_position, y_position), alignment_obj["value"], fill="white",font=font)    
+                d_mask = ImageDraw.Draw(black_img)
+                # Mask 的文字與邊框都填滿白色，代表需要顯示的區域
+                d_mask.text((x_position, y_position), alignment_obj["value"], fill="white", font=font, stroke_width=outline_width, stroke_fill="white")    
                 pil_images_masks.append(black_img)    
 
-                # crop subtitles to black frame
-                text_bbox = d.textbbox((x_position,y_position), alignment_obj["value"], font=font)
+                # 修改 4：裁切座標同樣需要考慮邊框寬度
+                text_bbox = d_mask.textbbox((x_position,y_position), alignment_obj["value"], font=font, stroke_width=outline_width)
                 cropped_text_frame = black_img.crop(text_bbox)
                 cropped_pil_images_with_text.append(cropped_text_frame)
                 subtitle_coord.append(text_bbox)
